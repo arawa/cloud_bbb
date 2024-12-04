@@ -59,7 +59,7 @@ async function prepareInfoXml() {
 	}
 	await validateXml(xmlDoc);
 
-	return { appID : xmlDoc.get('//id').text(), version: version};
+	return { appId : xmlDoc.get('//id').text(), version: version};
 }
 
 function updateVersion(xmlDoc, version) {
