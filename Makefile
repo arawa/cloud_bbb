@@ -2,6 +2,10 @@
 # later. See the COPYING file.
 app_name=$(notdir $(CURDIR))
 build_tools_directory=$(CURDIR)/build/tools
+source_build_directory=$(CURDIR)/build/artifacts/source
+source_package_name=$(source_build_directory)/$(app_name)
+appstore_build_directory=$(CURDIR)/build/artifacts/appstore
+appstore_package_name=$(appstore_build_directory)/$(app_name)
 composer=$(shell which composer 2> /dev/null)
 
 all: dev-setup lint build-js-production test
@@ -74,3 +78,59 @@ pack: install-composer-deps
 test:
 	./vendor/phpunit/phpunit/phpunit -c phpunit.xml
 	./vendor/phpunit/phpunit/phpunit -c phpunit.integration.xml
+
+
+######################################################
+#
+# Everything from here relates to building a valid app
+# for Nextcloud's official appstore
+#
+######################################################
+
+# Builds the source and appstore package
+.PHONY: dist
+dist:
+	make source
+	make appstore
+
+# Builds the source package
+.PHONY: source
+source:
+	rm -rf $(source_build_directory)
+	mkdir -p $(source_build_directory)
+	git status -u --porcelain | grep "??" | cut -c 4- >$(source_build_directory)/exclude_files.list
+	tar cvzf ${source_package_name}.tar.gz \
+	--exclude-vcs \
+	--exclude-vcs-ignores \
+	-X $(source_build_directory)/exclude_files.list \
+	--transform 's,^,$(app_name)/,S' \
+	.
+	rm -f $(source_build_directory)/exclude_files.list
+
+# Builds the source package for the app store, ignores php and js tests
+.PHONY: appstore
+appstore:
+	rm -rf $(appstore_build_directory)
+	mkdir -p $(appstore_build_directory)
+	git status -u --porcelain | grep "??" | cut -c 4- >$(appstore_build_directory)/exclude_files.list
+	tar cvzf "$(appstore_package_name).tar.gz" \
+	--exclude-vcs \
+	--exclude-vcs-ignores \
+	--exclude="./tests" \
+	--exclude="Makefile" \
+	--exclude="phpunit*xml" \
+	--exclude="composer.*" \
+	--exclude="*.json" \
+	--exclude="./\.*" \
+	--exclude="*.config.*" \
+	--exclude="./scripts" \
+	--exclude="psalm.*" \
+	--exclude="webpack.*" \
+	--exclude="yarn.*" \
+	--exclude="declarations.*" \
+	-X $(appstore_build_directory)/exclude_files.list \
+	--transform 's,^,$(app_name)/,S' \
+	.
+	# use tar to build zip
+	cd $(appstore_build_directory) && tar zxf $(app_name).tar.gz && zip -r $(app_name).zip $(app_name) && rm -rf $(app_name)
+	rm -f $(appstore_build_directory)/exclude_files.list

@@ -18,6 +18,7 @@ const { exec } = require('child_process');
 const { generateChangelog, hasChangeLogEntry } = require('./imports/changelog');
 
 const packageInfo = require('../package.json');
+const { exit } = require('process');
 
 colors.setTheme({
 	verbose: 'cyan',
@@ -30,6 +31,8 @@ const infoXmlPath = './appinfo/info.xml';
 const isStableRelease = process.argv.indexOf('--stable') > 1;
 const isDryRun = process.argv.indexOf('--dry-run') > 1;
 
+isDryRun && console.log('Script is executed in dry-run mode.'.verbose);
+
 async function getVersion() {
 	return packageInfo.version + (!isStableRelease ? '-git.' + (await git.raw(['rev-parse', '--short', 'HEAD'])).trim() : '');
 }
@@ -39,18 +42,24 @@ run().catch(err => {
 });
 
 async function run() {
-	const appId = await prepareInfoXml();
-	await createRelease(appId);
+	const info = await prepareInfoXml();
+	await createRelease(info.appId, info.version);
 }
 
 async function prepareInfoXml() {
 	const infoFile = fs.readFileSync(infoXmlPath);
 	const xmlDoc = libxml.parseXml(infoFile);
+	let version = '';
 
-	updateVersion(xmlDoc, await getVersion());
+	if (!isDryRun) {
+		version = await getVersion();
+		updateVersion(xmlDoc, version);
+	} else {
+		version = xmlDoc.get('//version').text();
+	}
 	await validateXml(xmlDoc);
 
-	return xmlDoc.get('//id').text();
+	return { appID : xmlDoc.get('//id').text(), version: version};
 }
 
 function updateVersion(xmlDoc, version) {
@@ -66,8 +75,7 @@ function updateVersion(xmlDoc, version) {
 	}
 }
 
-async function createRelease(appId) {
-	const version = await getVersion();
+async function createRelease(appId, version) {
 	console.log(`I'm now building ${appId} in version ${version}.`.verbose);
 
 	if (isStableRelease) {
@@ -249,7 +257,7 @@ function createNextcloudSignature(appId, filePath) {
 function createGPGSignature(filePath) {
 	return new Promise((resolve) => {
 		exec(`gpg --yes --detach-sign "${filePath}"`, (error, stdout, stderr) => {
-			if (error) {
+			if (error && !isDryRun) {
 				throw error;
 			}
 
@@ -271,7 +279,7 @@ function createGPGSignature(filePath) {
 function createGPGArmorSignature(filePath) {
 	return new Promise((resolve) => {
 		exec(`gpg --yes --detach-sign --armor "${filePath}"`, (error, stdout, stderr) => {
-			if (error) {
+			if (error && !isDryRun) {
 				throw error;
 			}
 

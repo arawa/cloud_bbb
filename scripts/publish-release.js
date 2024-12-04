@@ -1,4 +1,9 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable @typescript-eslint/no-var-requires *//**
+ * npm run release:publish [--dry-run]
+ *
+ *  --dry-run    don't commit CHANGELOG.md
+ *
+ */
 const colors = require('colors');
 const fs = require('fs');
 const path = require('path');
@@ -36,7 +41,16 @@ const files = [
 isDryRun && console.log('Script is executed in dry-run mode.'.verbose);
 
 function pull() {
-	return git.pull('origin', 'master');
+	if (isDryRun) {
+		try {
+			git.pull('origin', 'master');
+		} catch(err) {
+			console.log("git pull error:" + err);
+		}
+		return true;
+	} else {
+		return git.pull('origin', 'master');
+	}
 }
 
 async function notAlreadyTagged() {

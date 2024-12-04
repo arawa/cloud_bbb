@@ -1,3 +1,4 @@
+# -- for git
 .idea
 *.iml
 /js/
@@ -10,3 +11,27 @@ node_modules/
 .phpunit.result.cache
 .vscode/settings.json
 .php-cs-fixer.cache
+/build/
+
+# -- for tar
+./.idea
+./*.iml
+./js
+./vendor
+./node_modules
+./php_cs.cache
+./archive
+./.env
+./archives
+./.phpunit.result.cache
+./.vscode/settings.json
+./.php-cs-fixer.cache
+./build
+
+# -- for zip
+./js/*
+./vendor/*
+./node_modules/*
+./archive/*
+./archives/*
+./build/*
